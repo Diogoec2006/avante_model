@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Product, Customer, CartItem, Invoice, PaymentType } from '../types';
+import { Product, Customer, CartItem, Invoice, PaymentType, User as UserType } from '../types';
 import { ApiClient } from '../api/client';
 import { InvoicePrintModal } from './InvoicePrintModal';
 import { formatUSD } from '../utils/format';
@@ -17,9 +17,16 @@ import {
   CreditCard,
   Building2,
   FileCheck2,
+  Lock,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 
-export const PosView: React.FC = () => {
+interface PosViewProps {
+  currentUser?: UserType;
+}
+
+export const PosView: React.FC<PosViewProps> = ({ currentUser }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -31,17 +38,38 @@ export const PosView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Quick Customer Registration Modal for Sellers
+  const [showQuickCustomerModal, setShowQuickCustomerModal] = useState<boolean>(false);
+  const [quickCustomer, setQuickCustomer] = useState({
+    document_type: 'RUC',
+    document_number: '',
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    credit_limit: 1000,
+  });
+  const [quickError, setQuickError] = useState<string | null>(null);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveUser = currentUser || (JSON.parse(localStorage.getItem('avante_current_user') || 'null') as UserType) || {
+    id: 'user-admin-1',
+    role: 'ADMIN' as const,
+    full_name: 'Administrador',
+    email: 'admin@avante.com',
+  };
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [effectiveUser?.id, effectiveUser?.role]);
 
   const loadInitialData = async () => {
     try {
+      const sellerId = effectiveUser.role === 'VENDEDOR' ? effectiveUser.id : undefined;
       const [prods, custs] = await Promise.all([
         ApiClient.getProducts(),
-        ApiClient.getCustomers(),
+        ApiClient.getCustomers(sellerId),
       ]);
       setProducts(prods);
       setCustomers(custs);
@@ -207,6 +235,43 @@ export const PosView: React.FC = () => {
     }
   };
 
+  const handleSaveQuickCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setQuickError(null);
+
+    if (quickCustomer.document_type === 'RUC' && quickCustomer.document_number.length !== 13) {
+      setQuickError('El RUC en Ecuador debe tener exactamente 13 dígitos numéricos.');
+      return;
+    }
+    if (quickCustomer.document_type === 'CÉDULA' && quickCustomer.document_number.length !== 10) {
+      setQuickError('La Cédula en Ecuador debe tener exactamente 10 dígitos numéricos.');
+      return;
+    }
+
+    try {
+      const newCust = await ApiClient.createCustomer({
+        ...quickCustomer,
+        assigned_seller_id: effectiveUser.role === 'VENDEDOR' ? effectiveUser.id : undefined,
+        assigned_seller_name: effectiveUser.role === 'VENDEDOR' ? effectiveUser.full_name : undefined,
+      });
+
+      setShowQuickCustomerModal(false);
+      await loadInitialData();
+      setSelectedCustomerId(newCust.id);
+      setQuickCustomer({
+        document_type: 'RUC',
+        document_number: '',
+        name: '',
+        phone: '',
+        email: '',
+        address: '',
+        credit_limit: 1000,
+      });
+    } catch (err: any) {
+      setQuickError(err.message || 'Error al registrar cliente');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
       {error && (
@@ -337,26 +402,66 @@ export const PosView: React.FC = () => {
             )}
           </div>
 
-          {/* Customer Selection */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
-              <User className="w-4 h-4 text-slate-500" />
-              <span>Cliente Facturación (RUC / Cédula):</span>
-            </label>
+          {/* Customer Selection with Attribution & Quick Registration */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-slate-700 flex items-center space-x-1.5 uppercase tracking-wider">
+                <User className="w-4 h-4 text-slate-500" />
+                <span>Cliente Facturación:</span>
+              </label>
+
+              {/* Quick Registration Button for Vendedor / Admin */}
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickError(null);
+                  setShowQuickCustomerModal(true);
+                }}
+                className="text-[11px] font-black text-red-800 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-xl border border-red-200 flex items-center space-x-1 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Registrar Cliente</span>
+              </button>
+            </div>
+
             <select
               value={selectedCustomerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-red-600 focus:bg-white font-medium"
+              className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-3 text-xs text-slate-900 focus:outline-none focus:border-red-600 focus:bg-white font-medium"
             >
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.document_type}: {c.document_number})
-                </option>
-              ))}
+              {customers.map((c) => {
+                const isGeneric = c.document_number === '9999999999';
+                const isMine = c.assigned_seller_id === effectiveUser.id;
+                return (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.document_type}: {c.document_number})
+                    {isMine ? ' [🔒 Tu Cartera]' : isGeneric ? ' [Mostrador]' : ''}
+                  </option>
+                );
+              })}
             </select>
 
+            {/* Exclusive Attribution Badge */}
+            {(() => {
+              const selectedCust = customers.find((c) => c.id === selectedCustomerId);
+              if (selectedCust && selectedCust.document_number !== '9999999999') {
+                return (
+                  <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-800 flex items-center justify-between font-bold">
+                    <div className="flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Cliente Exclusivo de tu Cartera</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-600 font-mono">
+                      {selectedCust.document_type}: {selectedCust.document_number}
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {customerCredit && customerCredit.creditLimit > 0 && (
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
                 <div className="flex justify-between text-slate-600">
                   <span>Cupo de Crédito:</span>
                   <span className="font-mono font-bold text-slate-800">
@@ -518,6 +623,165 @@ export const PosView: React.FC = () => {
         invoice={createdInvoice}
         onClose={() => setCreatedInvoice(null)}
       />
+
+      {/* Quick Customer Registration Modal */}
+      {showQuickCustomerModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  Registrar Nuevo Cliente (POS Mostrador)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Atribución directa y exclusiva a tu cartera de ventas
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickCustomerModal(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {quickError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{quickError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveQuickCustomer} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Tipo de Documento
+                  </label>
+                  <select
+                    value={quickCustomer.document_type}
+                    onChange={(e) =>
+                      setQuickCustomer({ ...quickCustomer, document_type: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-medium"
+                  >
+                    <option value="RUC">RUC (13 Dígitos)</option>
+                    <option value="CÉDULA">Cédula (10 Dígitos)</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Número de Documento
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="1792345678001"
+                    value={quickCustomer.document_number}
+                    onChange={(e) =>
+                      setQuickCustomer({ ...quickCustomer, document_number: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nombre Completo / Razón Social
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Constructora Pichincha S.A."
+                  value={quickCustomer.name}
+                  onChange={(e) =>
+                    setQuickCustomer({ ...quickCustomer, name: e.target.value })
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Teléfono Celular
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="0991234567"
+                    value={quickCustomer.phone}
+                    onChange={(e) =>
+                      setQuickCustomer({ ...quickCustomer, phone: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Cupo Crédito Solicitado (USD)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={quickCustomer.credit_limit}
+                    onChange={(e) =>
+                      setQuickCustomer({
+                        ...quickCustomer,
+                        credit_limit: Number(e.target.value),
+                      })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Correo Electrónico (SRI)
+                </label>
+                <input
+                  type="email"
+                  placeholder="facturacion@cliente.ec"
+                  value={quickCustomer.email}
+                  onChange={(e) =>
+                    setQuickCustomer({ ...quickCustomer, email: e.target.value })
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>
+                  Cliente protegido: únicamente <strong>{effectiveUser.full_name}</strong> podrá facturarle.
+                </span>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCustomerModal(false)}
+                  className="px-4 py-2.5 border border-slate-300 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md"
+                >
+                  Guardar y Seleccionar en POS
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -107,6 +107,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ userRole }) => {
   );
 
   const isSeller = userRole === 'VENDEDOR';
+  const isWarehouseAssistant = userRole === 'ASISTENTE_BODEGA';
+  const canManageInventory = userRole === 'ADMIN' || userRole === 'ASISTENTE_BODEGA';
+  const hideCostPrice = isSeller;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -194,11 +197,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ userRole }) => {
           </select>
         </div>
 
-        {/* Well-sized Blue Action Button */}
-        {userRole === 'ADMIN' && (
+        {/* Action Button: Nuevo Producto (Permitido a ADMIN y ASISTENTE_BODEGA) */}
+        {canManageInventory && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/25 transition-all shrink-0"
+            className="flex items-center space-x-2 px-5 py-3 bg-red-800 hover:bg-red-900 text-white rounded-2xl text-xs font-bold shadow-md shadow-red-900/25 transition-all shrink-0 min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
             <span>Nuevo Producto</span>
@@ -264,11 +267,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ userRole }) => {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center space-x-2">
-                        {userRole === 'ADMIN' && (
+                        {canManageInventory && (
                           <button
                             onClick={() => setAdjustProduct(p)}
-                            title="Ajustar stock con justificación"
-                            className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center transition-colors"
+                            title="Agregar o ajustar existencias en bodega"
+                            className="w-9 h-9 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 flex items-center justify-center transition-all shadow-xs"
                           >
                             <Sliders className="w-4 h-4" />
                           </button>

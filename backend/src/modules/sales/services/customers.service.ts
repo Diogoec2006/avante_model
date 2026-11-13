@@ -28,7 +28,7 @@ export class CustomersService {
     return this.customerRepository.save(customer);
   }
 
-  async findAll(search?: string): Promise<Customer[]> {
+  async findAll(search?: string, sellerId?: string): Promise<Customer[]> {
     const qb = this.customerRepository.createQueryBuilder('c');
     if (search) {
       qb.where(
@@ -36,8 +36,27 @@ export class CustomersService {
         { search: `%${search}%` },
       );
     }
+    if (sellerId) {
+      qb.andWhere(
+        '(c.assigned_seller_id = :sellerId OR c.document_number = :consumidorFinal OR c.assigned_seller_id IS NULL)',
+        { sellerId, consumidorFinal: '9999999999' },
+      );
+    }
     qb.orderBy('c.name', 'ASC');
     return qb.getMany();
+  }
+
+  async reassign(
+    id: string,
+    newSellerId: string,
+    newSellerName: string,
+    notes: string,
+  ): Promise<Customer> {
+    const customer = await this.findOne(id);
+    customer.assigned_seller_id = newSellerId;
+    customer.assigned_seller_name = newSellerName;
+    customer.handoff_notes = notes;
+    return this.customerRepository.save(customer);
   }
 
   async findOne(id: string): Promise<Customer> {

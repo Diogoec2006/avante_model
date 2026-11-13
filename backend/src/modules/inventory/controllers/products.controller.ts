@@ -32,7 +32,7 @@ export class ProductsController {
   }
 
   @Get('low-stock')
-  @Roles(Role.ADMIN, Role.CONTADOR)
+  @Roles(Role.ADMIN, Role.CONTADOR, Role.ASISTENTE_BODEGA)
   getLowStockAlerts() {
     return this.productsService.getLowStockAlerts();
   }
@@ -51,7 +51,7 @@ export class ProductsController {
   }
 
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.ASISTENTE_BODEGA)
   create(
     @Body() createProductDto: CreateProductDto,
     @CurrentUser('id') userId: string,
@@ -60,7 +60,7 @@ export class ProductsController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.ASISTENTE_BODEGA)
   update(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,

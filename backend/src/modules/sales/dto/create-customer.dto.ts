@@ -42,5 +42,17 @@ export class CreateCustomerDto {
   @IsEnum(CreditStatus)
   @IsOptional()
   credit_status?: CreditStatus;
+
+  @IsString()
+  @IsOptional()
+  assigned_seller_id?: string;
+
+  @IsString()
+  @IsOptional()
+  assigned_seller_name?: string;
+
+  @IsString()
+  @IsOptional()
+  handoff_notes?: string;
 }
 

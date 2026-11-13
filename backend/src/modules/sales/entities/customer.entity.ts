@@ -58,6 +58,15 @@ export class Customer {
   })
   credit_status: CreditStatus;
 
+  @Column({ nullable: true, name: 'assigned_seller_id' })
+  assigned_seller_id: string;
+
+  @Column({ nullable: true, name: 'assigned_seller_name' })
+  assigned_seller_name: string;
+
+  @Column({ nullable: true, name: 'handoff_notes' })
+  handoff_notes: string;
+
   @Column({ name: 'is_active', default: true })
   is_active: boolean;
 

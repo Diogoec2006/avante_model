@@ -2,6 +2,7 @@ export enum Role {
   ADMIN = 'ADMIN',
   VENDEDOR = 'VENDEDOR',
   CONTADOR = 'CONTADOR',
+  ASISTENTE_BODEGA = 'ASISTENTE_BODEGA',
 }
 
 export enum MovementType {

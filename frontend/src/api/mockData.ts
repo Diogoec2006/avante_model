@@ -25,6 +25,14 @@ export const MOCK_USERS = [
     role: 'CONTADOR' as const,
     is_active: true,
   },
+  {
+    id: 'user-bodega-1',
+    email: 'bodega@avante.com',
+    password: 'Bodega123*',
+    full_name: 'Roberto Gómez (Asistente de Bodega)',
+    role: 'ASISTENTE_BODEGA' as const,
+    is_active: true,
+  },
 ];
 
 export const MOCK_CATEGORIES: Category[] = [
@@ -170,6 +178,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
     credit_limit: 0,
     current_debt: 0,
     credit_status: 'ACTIVE',
+    is_exclusive: false,
   },
   {
     id: 'cust-2',
@@ -182,6 +191,9 @@ export const MOCK_CUSTOMERS: Customer[] = [
     credit_limit: 5000.00,
     current_debt: 1250.00,
     credit_status: 'ACTIVE',
+    assigned_seller_id: 'user-vendedor-1',
+    assigned_seller_name: 'Laura Ramírez (Vendedora Mostrador)',
+    is_exclusive: true,
   },
   {
     id: 'cust-3',
@@ -194,6 +206,39 @@ export const MOCK_CUSTOMERS: Customer[] = [
     credit_limit: 1500.00,
     current_debt: 340.00,
     credit_status: 'ACTIVE',
+    assigned_seller_id: 'user-admin-1',
+    assigned_seller_name: 'Carlos Mendoza (Administrador General)',
+    is_exclusive: true,
+  },
+  {
+    id: 'cust-4',
+    document_type: 'RUC',
+    document_number: '1799887766001',
+    name: 'Ferretería El Maestro Sur',
+    phone: '022889900',
+    email: 'contacto@elmaestrosur.com',
+    address: 'Av. Maldonado y Morán Valverde, Quito Sur',
+    credit_limit: 3000.00,
+    current_debt: 0,
+    credit_status: 'ACTIVE',
+    assigned_seller_id: 'user-vendedor-2',
+    assigned_seller_name: 'Marco Villacís (Vendedor Técnico)',
+    is_exclusive: true,
+  },
+  {
+    id: 'cust-5',
+    document_type: 'RUC',
+    document_number: '1791122334001',
+    name: 'Constructora Pichincha S.A.',
+    phone: '022998877',
+    email: 'gerencia@cpichincha.com.ec',
+    address: 'Av. Naciones Unidas y 6 de Diciembre',
+    credit_limit: 8000.00,
+    current_debt: 450.00,
+    credit_status: 'ACTIVE',
+    assigned_seller_id: 'user-vendedor-1',
+    assigned_seller_name: 'Laura Ramírez (Vendedora Mostrador)',
+    is_exclusive: true,
   },
 ];
 

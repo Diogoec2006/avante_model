@@ -20,7 +20,7 @@ export class StockMovementsController {
   constructor(private readonly movementsService: StockMovementsService) {}
 
   @Post('adjust')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.ASISTENTE_BODEGA)
   adjustStock(
     @Body() dto: AdjustStockDto,
     @CurrentUser('id') userId: string,
@@ -29,13 +29,13 @@ export class StockMovementsController {
   }
 
   @Get('kardex/:productId')
-  @Roles(Role.ADMIN, Role.CONTADOR)
+  @Roles(Role.ADMIN, Role.CONTADOR, Role.ASISTENTE_BODEGA)
   getKardex(@Param('productId') productId: string) {
     return this.movementsService.getKardex(productId);
   }
 
   @Get('recent')
-  @Roles(Role.ADMIN, Role.CONTADOR)
+  @Roles(Role.ADMIN, Role.CONTADOR, Role.ASISTENTE_BODEGA)
   getRecentMovements() {
     return this.movementsService.getRecentMovements();
   }

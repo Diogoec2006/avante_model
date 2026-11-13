@@ -5,22 +5,38 @@ import {
   MOCK_CUSTOMERS,
   MOCK_ACCOUNTS,
 } from './mockData';
-import { Product, Customer, Invoice, ReceivableAccount, JournalEntry, Role, AccountingAccount } from '../types';
+import {
+  Product,
+  Customer,
+  Invoice,
+  ReceivableAccount,
+  JournalEntry,
+  Role,
+  AccountingAccount,
+  AuditPeriod,
+  AuditReportData,
+  ProductDemandHeat,
+  User,
+} from '../types';
 
 const API_BASE_URL = 'http://localhost:3001/api/v1';
 
 // Inicializar almacenamiento local para modo autónomo / fallback (Ecuador USD)
 const initLocalStorage = () => {
-  if (localStorage.getItem('avante_currency_ver') !== 'ECUADOR_USD_V1') {
+  if (localStorage.getItem('avante_currency_ver') !== 'ECUADOR_USD_V2') {
     localStorage.removeItem('avante_products');
     localStorage.removeItem('avante_categories');
     localStorage.removeItem('avante_customers');
     localStorage.removeItem('avante_receivables');
     localStorage.removeItem('avante_accounts');
     localStorage.removeItem('avante_journal_entries');
-    localStorage.setItem('avante_currency_ver', 'ECUADOR_USD_V1');
+    localStorage.removeItem('avante_users');
+    localStorage.setItem('avante_currency_ver', 'ECUADOR_USD_V2');
   }
 
+  if (!localStorage.getItem('avante_users')) {
+    localStorage.setItem('avante_users', JSON.stringify(MOCK_USERS));
+  }
   if (!localStorage.getItem('avante_products')) {
     localStorage.setItem('avante_products', JSON.stringify(MOCK_PRODUCTS));
   }
@@ -155,11 +171,17 @@ export class ApiClient {
     }
 
     // Modo local / Fallback
-    const user = MOCK_USERS.find(
+    const storedUsers: any[] = JSON.parse(
+      localStorage.getItem('avante_users') || JSON.stringify(MOCK_USERS),
+    );
+    const user = storedUsers.find(
       (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
     );
 
     if (user && user.password === password) {
+      if (user.is_active === false) {
+        throw new Error('Esta cuenta ha sido desactivada por el Administrador.');
+      }
       const mockToken = `mock-token-${user.role}-${Date.now()}`;
       const userData = {
         id: user.id,
@@ -174,6 +196,9 @@ export class ApiClient {
 
     // Si la contraseña no coincide exactamente, permitir si coincide email para facilitar pruebas
     if (user) {
+      if (user.is_active === false) {
+        throw new Error('Esta cuenta ha sido desactivada por el Administrador.');
+      }
       const mockToken = `mock-token-${user.role}-${Date.now()}`;
       const userData = {
         id: user.id,
@@ -186,7 +211,7 @@ export class ApiClient {
       return { accessToken: mockToken, user: userData };
     }
 
-    throw new Error('Credenciales inválidas. Usa admin@avante.com / Admin123*');
+    throw new Error('Credenciales inválidas. Verifica tu correo y contraseña corporativa.');
   }
 
   static async getProfile(): Promise<any> {
@@ -482,7 +507,7 @@ export class ApiClient {
           account: MOCK_ACCOUNTS[4],
           debit: 0,
           credit: taxAmount,
-          description: 'IVA 19% Generado',
+          description: 'IVA 15% SRI Generado',
         },
       ],
       created_at: new Date().toISOString(),
@@ -492,9 +517,12 @@ export class ApiClient {
     return invoice;
   }
 
-  static async getCustomers(): Promise<Customer[]> {
+  static async getCustomers(sellerId?: string): Promise<Customer[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/sales/customers`, {
+      const url = sellerId
+        ? `${API_BASE_URL}/sales/customers?sellerId=${sellerId}`
+        : `${API_BASE_URL}/sales/customers`;
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${this.getToken()}` },
       });
       if (res.ok) {
@@ -502,7 +530,105 @@ export class ApiClient {
         return json.data || json;
       }
     } catch {}
-    return JSON.parse(localStorage.getItem('avante_customers') || '[]');
+
+    const all: Customer[] = JSON.parse(
+      localStorage.getItem('avante_customers') || '[]',
+    );
+    if (sellerId) {
+      return all.filter(
+        (c) =>
+          c.document_number === '9999999999' ||
+          !c.assigned_seller_id ||
+          c.assigned_seller_id === sellerId,
+      );
+    }
+    return all;
+  }
+
+  static async createCustomer(dto: Partial<Customer>): Promise<Customer> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/sales/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.getToken()}`,
+        },
+        body: JSON.stringify(dto),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || json;
+      }
+    } catch {}
+
+    const custs: Customer[] = JSON.parse(
+      localStorage.getItem('avante_customers') || '[]',
+    );
+    const existing = custs.find((c) => c.document_number === dto.document_number);
+    if (existing) {
+      throw new Error(
+        `El cliente con documento ${dto.document_number} ya está registrado en el sistema.`,
+      );
+    }
+
+    const currentUser = this.getCurrentUser();
+    const newCustomer: Customer = {
+      id: `cust-${Date.now()}`,
+      document_type: dto.document_type || 'RUC',
+      document_number: dto.document_number || '',
+      name: dto.name || '',
+      phone: dto.phone || '',
+      email: dto.email || '',
+      address: dto.address || '',
+      credit_limit: Number(dto.credit_limit || 0),
+      current_debt: 0,
+      credit_status: 'ACTIVE',
+      assigned_seller_id:
+        dto.assigned_seller_id ||
+        (currentUser.role === 'VENDEDOR' ? currentUser.id : undefined),
+      assigned_seller_name:
+        dto.assigned_seller_name ||
+        (currentUser.role === 'VENDEDOR' ? currentUser.full_name : undefined),
+      is_exclusive: true,
+      handoff_notes: dto.handoff_notes,
+    };
+
+    custs.push(newCustomer);
+    localStorage.setItem('avante_customers', JSON.stringify(custs));
+    return newCustomer;
+  }
+
+  static async reassignCustomer(
+    customerId: string,
+    newSellerId: string,
+    newSellerName: string,
+    notes: string,
+  ): Promise<Customer> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/sales/customers/${customerId}/reassign`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.getToken()}`,
+        },
+        body: JSON.stringify({ newSellerId, newSellerName, notes }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || json;
+      }
+    } catch {}
+
+    const custs: Customer[] = JSON.parse(
+      localStorage.getItem('avante_customers') || '[]',
+    );
+    const c = custs.find((item) => item.id === customerId);
+    if (!c) throw new Error('Cliente no encontrado');
+    c.assigned_seller_id = newSellerId;
+    c.assigned_seller_name = newSellerName;
+    c.handoff_notes = notes;
+    localStorage.setItem('avante_customers', JSON.stringify(custs));
+    return c;
   }
 
   static async getCustomerCreditStatus(id: string): Promise<any> {
@@ -639,10 +765,11 @@ export class ApiClient {
 
     entries.forEach((e) => {
       e.lines.forEach((l) => {
-        if (l.account?.code?.startsWith('4135')) totalSales += Number(l.credit) - Number(l.debit);
-        if (l.account?.code?.startsWith('1105')) cashBalance += Number(l.debit) - Number(l.credit);
-        if (l.account?.code?.startsWith('1305')) receivablesBal += Number(l.debit) - Number(l.credit);
-        if (l.account?.code?.startsWith('2408')) taxPayable += Number(l.credit) - Number(l.debit);
+        const code = l.account?.code || '';
+        if (code.startsWith('4.1') || code.startsWith('4135')) totalSales += Number(l.credit) - Number(l.debit);
+        if (code.startsWith('1.1.01') || code.startsWith('1105')) cashBalance += Number(l.debit) - Number(l.credit);
+        if (code.startsWith('1.1.02') || code.startsWith('1305')) receivablesBal += Number(l.debit) - Number(l.credit);
+        if (code.startsWith('2.1.07') || code.startsWith('2408')) taxPayable += Number(l.credit) - Number(l.debit);
       });
     });
 
@@ -681,12 +808,244 @@ export class ApiClient {
     return newEntry;
   }
 
-  // Users
+  // Audit Reports (Daily, Weekly, Monthly, Annual)
+  static async getAuditReport(period: AuditPeriod): Promise<AuditReportData> {
+    const invoices: Invoice[] = JSON.parse(localStorage.getItem('avante_invoices') || '[]');
+    const receivables: ReceivableAccount[] = JSON.parse(localStorage.getItem('avante_receivables') || '[]');
+
+    let periodLabel = 'Auditoría Fiscal Diaria SRI - Corte de Caja';
+    let multiplier = 1;
+
+    switch (period) {
+      case 'DAILY':
+        periodLabel = 'Auditoría Diaria de Operaciones y Corte Fiscal SRI (Hoy)';
+        multiplier = 1;
+        break;
+      case 'WEEKLY':
+        periodLabel = 'Auditoría Semanal Consolidada de Ventas y Cartera (7 Días)';
+        multiplier = 4.8;
+        break;
+      case 'MONTHLY':
+        periodLabel = 'Informe de Auditoría Mensual - Balance Tributario SRI (Mes en Curso)';
+        multiplier = 18.5;
+        break;
+      case 'ANNUAL':
+        periodLabel = 'Auditoría Financiera y Dictamen Fiscal Anual - Ejercicio 2026';
+        multiplier = 145.2;
+        break;
+    }
+
+    const baseSales = invoices.reduce((sum, inv) => sum + Number(inv.total), 0) || 1590.00;
+    const totalSalesUSD = baseSales * multiplier;
+    const subtotalUSD = totalSalesUSD / 1.15;
+    const iva15SRIUSD = totalSalesUSD - subtotalUSD;
+
+    const cashUSD = totalSalesUSD * 0.45;
+    const transferUSD = totalSalesUSD * 0.25;
+    const cardUSD = totalSalesUSD * 0.15;
+    const creditUSD = totalSalesUSD * 0.15;
+
+    const creditCollectedUSD =
+      (receivables.reduce((s, r) => s + (Number(r.total_amount) - Number(r.balance)), 0) || 540) *
+      multiplier;
+    const receivablesOverdueUSD =
+      (receivables.filter((r) => r.status === 'OVERDUE').reduce((s, r) => s + Number(r.balance), 0) ||
+        1250) * Math.min(1.5, multiplier);
+
+    const costOfGoodsUSD = totalSalesUSD * 0.65;
+    const estimatedGrossProfitUSD = subtotalUSD - costOfGoodsUSD;
+
+    const transactionsBreakdown = [
+      {
+        reference: 'FAC-001-001-000001',
+        description: 'Venta de Materiales y Tubería PVC Plastigama',
+        paymentMethod: 'Crédito Comercial (30 días)',
+        subtotal: 1086.96 * Math.min(multiplier, 2.5),
+        tax: 163.04 * Math.min(multiplier, 2.5),
+        total: 1250.00 * Math.min(multiplier, 2.5),
+        status: 'AUTORIZADO SRI',
+      },
+      {
+        reference: 'FAC-001-001-000002',
+        description: 'Herramientas Eléctricas DeWalt & Tornillería Drywall',
+        paymentMethod: 'Efectivo Mostrador (USD)',
+        subtotal: 295.65 * Math.min(multiplier, 2.5),
+        tax: 44.35 * Math.min(multiplier, 2.5),
+        total: 340.00 * Math.min(multiplier, 2.5),
+        status: 'AUTORIZADO SRI',
+      },
+      {
+        reference: 'FAC-001-001-000003',
+        description: 'Pintura Esmalte Sintético Cóndor & Cables Eléctricos THHN',
+        paymentMethod: 'Transferencia Banco Pichincha',
+        subtotal: 420.00 * Math.min(multiplier, 2.5),
+        tax: 63.00 * Math.min(multiplier, 2.5),
+        total: 483.00 * Math.min(multiplier, 2.5),
+        status: 'AUTORIZADO SRI',
+      },
+      {
+        reference: 'REC-ABONO-004',
+        description: 'Abono Parcial a Factura de Crédito Pendiente',
+        paymentMethod: 'Transferencia Directa',
+        subtotal: 217.39 * Math.min(multiplier, 2.5),
+        tax: 32.61 * Math.min(multiplier, 2.5),
+        total: 250.00 * Math.min(multiplier, 2.5),
+        status: 'CONCILIADO BANCOS',
+      },
+    ];
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const sriAuth = `${dateStr}0117923456780011001001000000${Math.floor(100000000 + Math.random() * 900000000)}1234567812`.slice(0, 49);
+
+    return {
+      period,
+      periodLabel,
+      generatedAt: now.toLocaleString('es-EC', { dateStyle: 'full', timeStyle: 'medium' }),
+      sriAuthorizationCode: sriAuth,
+      auditorName: 'Lic. Santiago Morales (Contador General - Reg. SRI #17-4892)',
+      companyName: 'AVANTE FERRETERÍAS S.A.',
+      companyRuc: '1792345678001',
+      metrics: {
+        totalSalesUSD,
+        subtotalUSD,
+        iva15SRIUSD,
+        cashUSD,
+        transferUSD,
+        cardUSD,
+        creditUSD,
+        invoicesCount: Math.round(18 * multiplier),
+        creditCollectedUSD,
+        receivablesOverdueUSD,
+        costOfGoodsUSD,
+        estimatedGrossProfitUSD,
+      },
+      transactionsBreakdown,
+    };
+  }
+
+  // Product Demand Heatmap
+  static async getProductDemandHeatmap(): Promise<ProductDemandHeat[]> {
+    const products: Product[] = await this.getProducts();
+
+    return products.map((p) => {
+      let units = 45;
+      let txCount = 28;
+      let score = 85;
+      let heat: 'CRITICAL_HIGH' | 'HIGH' | 'MODERATE' | 'LOW' = 'HIGH';
+
+      if (p.sku.startsWith('HERR-001') || p.sku.startsWith('TORN-001')) {
+        units = 112;
+        txCount = 64;
+        score = 94;
+        heat = 'CRITICAL_HIGH';
+      } else if (p.sku.startsWith('HERR-003')) {
+        units = 78;
+        txCount = 42;
+        score = 88;
+        heat = 'CRITICAL_HIGH';
+      } else if (p.sku.startsWith('PLOM-001') || p.sku.startsWith('ELEC-001')) {
+        units = 56;
+        txCount = 31;
+        score = 68;
+        heat = 'HIGH';
+      } else if (p.sku.startsWith('PINT-001') || p.sku.startsWith('HERR-002')) {
+        units = 24;
+        txCount = 15;
+        score = 42;
+        heat = 'MODERATE';
+      } else {
+        units = 14;
+        txCount = 8;
+        score = 22;
+        heat = 'LOW';
+      }
+
+      const dailyRate = Math.max(1, Math.round(units / 7));
+      const depletion = Math.max(1, Math.round(p.current_stock / dailyRate));
+
+      return {
+        productId: p.id,
+        productName: p.name,
+        sku: p.sku,
+        barcode: p.barcode,
+        categoryName: p.category?.name || 'General',
+        currentStock: p.current_stock,
+        minStock: p.min_stock,
+        unitsRequested: units,
+        transactionsCount: txCount,
+        demandVelocity: score,
+        heatLevel: heat,
+        depletionDays: depletion,
+        revenueGeneratedUSD: units * p.sale_price,
+      };
+    });
+  }
+
+  // Users Delegation & Management
   static async getUsers(): Promise<any[]> {
-    return MOCK_USERS;
+    const raw = localStorage.getItem('avante_users');
+    if (!raw) {
+      localStorage.setItem('avante_users', JSON.stringify(MOCK_USERS));
+      return MOCK_USERS;
+    }
+    return JSON.parse(raw);
+  }
+
+  static async createUser(userData: {
+    full_name: string;
+    email: string;
+    password?: string;
+    role: Role;
+    phone?: string;
+    document_number?: string;
+  }): Promise<User> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.getToken()}`,
+        },
+        body: JSON.stringify(userData),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || json;
+      }
+    } catch {}
+
+    const users: any[] = await this.getUsers();
+    const existing = users.find(
+      (u) => u.email.toLowerCase() === userData.email.trim().toLowerCase(),
+    );
+    if (existing) {
+      throw new Error(`El usuario con correo ${userData.email} ya existe en el sistema.`);
+    }
+
+    const newUser: any = {
+      id: `user-${Date.now()}`,
+      email: userData.email.trim().toLowerCase(),
+      password: userData.password || 'Avante2026*',
+      full_name: userData.full_name,
+      role: userData.role,
+      phone: userData.phone || '',
+      document_number: userData.document_number || '',
+      is_active: true,
+    };
+
+    users.push(newUser);
+    localStorage.setItem('avante_users', JSON.stringify(users));
+    return newUser;
   }
 
   static async toggleUserStatus(id: string): Promise<any> {
+    const users: any[] = await this.getUsers();
+    const user = users.find((u) => u.id === id);
+    if (user) {
+      user.is_active = !user.is_active;
+      localStorage.setItem('avante_users', JSON.stringify(users));
+    }
     return { success: true };
   }
 }

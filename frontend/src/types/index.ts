@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'VENDEDOR' | 'CONTADOR';
+export type Role = 'ADMIN' | 'VENDEDOR' | 'CONTADOR' | 'ASISTENTE_BODEGA';
 
 export enum PaymentType {
   CASH = 'CASH',
@@ -13,6 +13,8 @@ export interface User {
   full_name: string;
   role: Role;
   is_active?: boolean;
+  phone?: string;
+  document_number?: string;
 }
 
 export interface Category {
@@ -30,7 +32,7 @@ export interface Product {
   barcode: string;
   name: string;
   unit_of_measure: string;
-  cost_price?: number; // Oculto a Vendedor
+  cost_price?: number; // Oculto a Vendedor y Asistente de Bodega
   sale_price: number;
   current_stock: number;
   min_stock: number;
@@ -49,6 +51,61 @@ export interface Customer {
   credit_limit: number;
   current_debt: number;
   credit_status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED';
+  assigned_seller_id?: string;
+  assigned_seller_name?: string;
+  handoff_notes?: string;
+  is_exclusive?: boolean;
+}
+
+export type AuditPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL';
+
+export interface ProductDemandHeat {
+  productId: string;
+  productName: string;
+  sku: string;
+  barcode: string;
+  categoryName: string;
+  currentStock: number;
+  minStock: number;
+  unitsRequested: number;
+  transactionsCount: number;
+  demandVelocity: number; // 0 a 100
+  heatLevel: 'CRITICAL_HIGH' | 'HIGH' | 'MODERATE' | 'LOW';
+  depletionDays: number;
+  revenueGeneratedUSD: number;
+}
+
+export interface AuditReportData {
+  period: AuditPeriod;
+  periodLabel: string;
+  generatedAt: string;
+  sriAuthorizationCode: string;
+  auditorName: string;
+  companyName: string;
+  companyRuc: string;
+  metrics: {
+    totalSalesUSD: number;
+    subtotalUSD: number;
+    iva15SRIUSD: number;
+    cashUSD: number;
+    transferUSD: number;
+    cardUSD: number;
+    creditUSD: number;
+    invoicesCount: number;
+    creditCollectedUSD: number;
+    receivablesOverdueUSD: number;
+    costOfGoodsUSD: number;
+    estimatedGrossProfitUSD: number;
+  };
+  transactionsBreakdown: {
+    reference: string;
+    description: string;
+    paymentMethod: string;
+    subtotal: number;
+    tax: number;
+    total: number;
+    status: string;
+  }[];
 }
 
 export interface CartItem {

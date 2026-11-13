@@ -13,7 +13,7 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'El nombre completo es obligatorio' })
   full_name: string;
 
-  @IsEnum(Role, { message: 'El rol debe ser ADMIN, VENDEDOR o CONTADOR' })
+  @IsEnum(Role, { message: 'El rol debe ser ADMIN, VENDEDOR, CONTADOR o ASISTENTE_BODEGA' })
   role: Role;
 }
 

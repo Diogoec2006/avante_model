@@ -8,6 +8,8 @@ import { InventoryView } from './components/InventoryView';
 import { ReceivablesView } from './components/ReceivablesView';
 import { AccountingView } from './components/AccountingView';
 import { UsersView } from './components/UsersView';
+import { SellerCustomersView } from './components/SellerCustomersView';
+import { ProductHeatmap } from './components/ProductHeatmap';
 
 export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -41,6 +43,9 @@ export const App: React.FC = () => {
       case 'CONTADOR':
         setActiveTab('accounting');
         break;
+      case 'ASISTENTE_BODEGA':
+        setActiveTab('inventory');
+        break;
     }
   };
 
@@ -55,18 +60,10 @@ export const App: React.FC = () => {
     setCurrentUser(null);
   };
 
-  const handleSwitchRole = (role: Role) => {
-    if (!currentUser) return;
-    const updated = { ...currentUser, role };
-    setCurrentUser(updated);
-    localStorage.setItem('avante_current_user', JSON.stringify(updated));
-    setDefaultTabForRole(role);
-  };
-
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">
-        Cargando sistema Avante...
+        Cargando sistema Avante Ecuador...
       </div>
     );
   }
@@ -82,26 +79,40 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        onSwitchRole={handleSwitchRole}
       />
 
       <main className="flex-1 pb-12">
+        {/* Module 1: POS Mostrador (VENDEDOR & ADMIN) */}
         {activeTab === 'pos' && (currentUser.role === 'ADMIN' || currentUser.role === 'VENDEDOR') && (
-          <PosView />
+          <PosView currentUser={currentUser} />
         )}
 
+        {/* Module 2: Cartera Exclusiva de Clientes del Vendedor (VENDEDOR & ADMIN) */}
+        {activeTab === 'customers' && (currentUser.role === 'ADMIN' || currentUser.role === 'VENDEDOR') && (
+          <SellerCustomersView currentUser={currentUser} />
+        )}
+
+        {/* Module 3: Bodega & Inventario (ASISTENTE_BODEGA, ADMIN, VENDEDOR) */}
         {activeTab === 'inventory' && (
           <InventoryView userRole={currentUser.role} />
         )}
 
+        {/* Module 4: Mapa de Calor de Demanda (CONTADOR & ADMIN) */}
+        {activeTab === 'heatmap' && (currentUser.role === 'ADMIN' || currentUser.role === 'CONTADOR') && (
+          <ProductHeatmap />
+        )}
+
+        {/* Module 5: Cartera CxC (ADMIN & CONTADOR) */}
         {activeTab === 'receivables' && (currentUser.role === 'ADMIN' || currentUser.role === 'CONTADOR') && (
           <ReceivablesView />
         )}
 
+        {/* Module 6: Contabilidad & Auditorías SRI (ADMIN & CONTADOR) */}
         {activeTab === 'accounting' && (currentUser.role === 'ADMIN' || currentUser.role === 'CONTADOR') && (
           <AccountingView />
         )}
 
+        {/* Module 7: Personal & Delegación de Roles (ADMIN Únicamente) */}
         {activeTab === 'users' && currentUser.role === 'ADMIN' && (
           <UsersView />
         )}

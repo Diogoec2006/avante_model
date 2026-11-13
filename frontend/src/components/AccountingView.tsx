@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { JournalEntry, AccountingAccount } from '../types';
+import { JournalEntry, AccountingAccount, AuditPeriod } from '../types';
 import { ApiClient } from '../api/client';
 import { formatUSD } from '../utils/format';
+import { AuditReportModal } from './AuditReportModal';
 import {
   BookOpen,
   Plus,
@@ -9,6 +10,9 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Scale,
+  FileText,
+  Printer,
+  Calendar,
 } from 'lucide-react';
 
 export const AccountingView: React.FC = () => {
@@ -17,6 +21,10 @@ export const AccountingView: React.FC = () => {
   const [accounts, setAccounts] = useState<AccountingAccount[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState<boolean>(false);
+
+  // Audit PDF Modal State
+  const [showAuditModal, setShowAuditModal] = useState<boolean>(false);
+  const [auditPeriod, setAuditPeriod] = useState<AuditPeriod>('DAILY');
 
   // Manual Entry Form
   const [concept, setConcept] = useState<string>('');
@@ -116,6 +124,94 @@ export const AccountingView: React.FC = () => {
             {formatUSD(summary?.taxPayable)}
           </h3>
           <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Cuenta 2.1.07.01 (Pasivo Fiscal)</p>
+        </div>
+      </div>
+
+      {/* Official SRI Audits Quick Download Section */}
+      <div className="bg-white p-5 border border-slate-200 rounded-3xl shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-red-100 text-red-800 rounded-2xl">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                Auditorías Oficiales SRI & Estados Financieros
+              </h3>
+              <p className="text-xs text-slate-500">
+                Genera e imprime dictámenes contables certificados en PDF según el período fiscal requerido
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full w-fit">
+            ✓ Formato Oficial NIIF Ecuador (USD)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <button
+            onClick={() => {
+              setAuditPeriod('DAILY');
+              setShowAuditModal(true);
+            }}
+            className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-red-50 hover:border-red-300 border border-slate-200 rounded-2xl text-left transition-all group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-black text-slate-800 group-hover:text-red-800 block">
+                Auditoría Diaria
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Corte de caja de hoy</span>
+            </div>
+            <Printer className="w-4 h-4 text-slate-400 group-hover:text-red-700 shrink-0" />
+          </button>
+
+          <button
+            onClick={() => {
+              setAuditPeriod('WEEKLY');
+              setShowAuditModal(true);
+            }}
+            className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-red-50 hover:border-red-300 border border-slate-200 rounded-2xl text-left transition-all group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-black text-slate-800 group-hover:text-red-800 block">
+                Auditoría Semanal
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Últimos 7 días corridos</span>
+            </div>
+            <Printer className="w-4 h-4 text-slate-400 group-hover:text-red-700 shrink-0" />
+          </button>
+
+          <button
+            onClick={() => {
+              setAuditPeriod('MONTHLY');
+              setShowAuditModal(true);
+            }}
+            className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-red-50 hover:border-red-300 border border-slate-200 rounded-2xl text-left transition-all group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-black text-slate-800 group-hover:text-red-800 block">
+                Auditoría Mensual
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Declaración SRI mensual</span>
+            </div>
+            <Printer className="w-4 h-4 text-slate-400 group-hover:text-red-700 shrink-0" />
+          </button>
+
+          <button
+            onClick={() => {
+              setAuditPeriod('ANNUAL');
+              setShowAuditModal(true);
+            }}
+            className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-red-50 hover:border-red-300 border border-slate-200 rounded-2xl text-left transition-all group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-black text-slate-800 group-hover:text-red-800 block">
+                Auditoría Anual
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Ejercicio Fiscal 2026</span>
+            </div>
+            <Printer className="w-4 h-4 text-slate-400 group-hover:text-red-700 shrink-0" />
+          </button>
         </div>
       </div>
 
@@ -452,6 +548,13 @@ export const AccountingView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Audit PDF Export Modal */}
+      <AuditReportModal
+        isOpen={showAuditModal}
+        onClose={() => setShowAuditModal(false)}
+        initialPeriod={auditPeriod}
+      />
     </div>
   );
 };

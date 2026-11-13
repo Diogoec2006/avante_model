@@ -7,6 +7,8 @@ import {
   BookOpen,
   Users,
   LogOut,
+  Flame,
+  UserCheck,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -14,7 +16,6 @@ interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
-  onSwitchRole: (role: Role) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,61 +23,72 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onLogout,
-  onSwitchRole,
 }) => {
-  const tabs = [
-    {
-      id: 'pos',
-      label: 'Punto de Venta (POS)',
-      icon: ShoppingCart,
-      roles: ['ADMIN', 'VENDEDOR'],
-    },
-    {
-      id: 'inventory',
-      label: 'Bodega e Inventario',
-      icon: Package,
-      roles: ['ADMIN', 'VENDEDOR', 'CONTADOR'],
-    },
-    {
-      id: 'receivables',
-      label: 'Cartera (CxC)',
-      icon: CreditCard,
-      roles: ['ADMIN', 'CONTADOR'],
-    },
-    {
-      id: 'accounting',
-      label: 'Contabilidad (NIIF)',
-      icon: BookOpen,
-      roles: ['ADMIN', 'CONTADOR'],
-    },
-    {
-      id: 'users',
-      label: 'Usuarios y RBAC',
-      icon: Users,
-      roles: ['ADMIN'],
-    },
-  ];
+  // Navigation tabs defined strictly per role
+  const getTabsForRole = (role: Role) => {
+    switch (role) {
+      case 'ADMIN':
+        return [
+          { id: 'pos', label: 'Punto de Venta POS', icon: ShoppingCart },
+          { id: 'inventory', label: 'Bodega & Inventario', icon: Package },
+          { id: 'receivables', label: 'Cartera (CxC)', icon: CreditCard },
+          { id: 'accounting', label: 'Contabilidad & Auditoría', icon: BookOpen },
+          { id: 'users', label: 'Personal & Delegación', icon: Users },
+        ];
+      case 'VENDEDOR':
+        return [
+          { id: 'pos', label: 'Terminal POS (Ventas)', icon: ShoppingCart },
+          { id: 'customers', label: 'Mi Cartera de Clientes', icon: UserCheck },
+          { id: 'inventory', label: 'Consulta de Stock', icon: Package },
+        ];
+      case 'CONTADOR':
+        return [
+          { id: 'accounting', label: 'Contabilidad & Auditorías', icon: BookOpen },
+          { id: 'heatmap', label: 'Mapa de Calor de Demanda', icon: Flame },
+          { id: 'receivables', label: 'Cartera & Morosidad', icon: CreditCard },
+        ];
+      case 'ASISTENTE_BODEGA':
+        return [
+          { id: 'inventory', label: 'Bodega & Control de Stock', icon: Package },
+        ];
+    }
+  };
 
-  const visibleTabs = tabs.filter((t) => t.roles.includes(user.role));
+  const visibleTabs = getTabsForRole(user.role);
 
   const getRoleBadge = (role: Role) => {
     switch (role) {
       case 'ADMIN':
-        return 'bg-red-50 text-red-700 border-red-200';
+        return 'bg-red-50 text-red-800 border-red-300';
       case 'VENDEDOR':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-300';
       case 'CONTADOR':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-blue-50 text-blue-800 border-blue-300';
+      case 'ASISTENTE_BODEGA':
+        return 'bg-amber-50 text-amber-800 border-amber-300';
+    }
+  };
+
+  const getRoleTitle = (role: Role) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'Administrador';
+      case 'VENDEDOR':
+        return 'Vendedor Mostrador';
+      case 'CONTADOR':
+        return 'Contador Oficial';
+      case 'ASISTENTE_BODEGA':
+        return 'Asistente de Bodega';
     }
   };
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo & Brand Ecuador */}
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-200 shadow-xs p-1">
+          <div className="flex items-center space-x-3.5">
+            <div className="h-12 w-12 rounded-2xl overflow-hidden bg-white flex items-center justify-center border border-slate-200 shadow-sm p-1.5 shrink-0">
               <img
                 src="/logo_avante.avif"
                 alt="Logo Avante"
@@ -85,20 +97,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-black text-xl tracking-tight text-red-700">
+                <span className="font-black text-2xl tracking-tight text-red-800">
                   AVANTE
                 </span>
-                <span className="text-[10px] px-2 py-0.5 bg-red-100 text-red-800 rounded-md font-bold uppercase tracking-wider">
-                  Ecuador USD
+                <span className="text-[11px] px-2 py-0.5 bg-red-100 text-red-800 rounded-md font-black uppercase tracking-wider">
+                  Ecuador · USD $
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">
+              <p className="text-[11px] text-slate-500 font-semibold">
                 Ferretería & Soluciones Técnicas
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs - Well Distributed */}
+          {/* Navigation Tabs - Tablet & Desktop touch-friendly */}
           <nav className="hidden md:flex space-x-2">
             {visibleTabs.map((tab) => {
               const Icon = tab.icon;
@@ -107,72 +119,49 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
+                  className={`flex items-center space-x-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-150 min-h-[46px] select-none ${
                     isActive
-                      ? 'bg-red-700 text-white shadow-sm ring-1 ring-red-700'
+                      ? 'bg-red-800 text-white shadow-md shadow-red-900/20 ring-1 ring-red-800'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span>{tab.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* User info & Role Switcher */}
-          <div className="flex items-center space-x-3">
-            {/* Quick Role Switcher Buttons */}
-            <div className="hidden lg:flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-xs">
-              <span className="text-[10px] text-slate-500 font-bold px-1.5">
-                Rol:
-              </span>
-              {(['ADMIN', 'VENDEDOR', 'CONTADOR'] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => onSwitchRole(r)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                    user.role === r
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
-            {/* User Profile */}
-            <div className="flex items-center space-x-2.5 pl-3 border-l border-slate-200">
-              <div className="text-right">
-                <div className="text-xs font-bold text-slate-800 leading-none">
-                  {user.full_name?.split(' ')[0]}
-                </div>
-                <div className="mt-1">
-                  <span
-                    className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${getRoleBadge(
-                      user.role,
-                    )}`}
-                  >
-                    {user.role}
-                  </span>
-                </div>
+          {/* User Profile & Logout (No Role Switching) */}
+          <div className="flex items-center space-x-3.5">
+            <div className="text-right">
+              <div className="text-xs font-black text-slate-900 leading-tight">
+                {user.full_name}
               </div>
-
-              {/* Red Logout Button */}
-              <button
-                onClick={onLogout}
-                title="Cerrar sesión"
-                className="p-2 rounded-xl text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <div className="mt-1 flex items-center justify-end">
+                <span
+                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${getRoleBadge(
+                    user.role,
+                  )}`}
+                >
+                  {getRoleTitle(user.role)}
+                </span>
+              </div>
             </div>
+
+            {/* Red Logout Button with Clear Familiar Function */}
+            <button
+              onClick={onLogout}
+              title="Cerrar sesión segura"
+              className="p-3 rounded-2xl text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 transition-all flex items-center justify-center min-h-[46px] min-w-[46px]"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Mobile Navigation bar */}
-        <div className="flex md:hidden overflow-x-auto py-2.5 space-x-2 border-t border-slate-200">
+        {/* Mobile / Tablet Scrollable Navigation Bar */}
+        <div className="flex md:hidden overflow-x-auto py-3 space-x-2 border-t border-slate-200 no-scrollbar">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -180,13 +169,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap ${
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap min-h-[44px] ${
                   isActive
-                    ? 'bg-red-700 text-white'
+                    ? 'bg-red-800 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 bg-slate-100'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
               </button>
             );

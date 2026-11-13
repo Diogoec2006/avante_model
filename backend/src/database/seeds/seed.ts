@@ -76,6 +76,12 @@ async function runSeed() {
       full_name: 'Santiago Morales (Contador Oficial)',
       role: Role.CONTADOR,
     },
+    {
+      email: 'bodega@avante.com',
+      password_hash: await bcrypt.hash('Bodega123*', salt),
+      full_name: 'Roberto Gómez (Asistente de Bodega)',
+      role: Role.ASISTENTE_BODEGA,
+    },
   ];
 
   for (const u of usersData) {
