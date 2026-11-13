@@ -25,7 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
 }) => {
   // Navigation tabs defined strictly per role
-  const getTabsForRole = (role: Role) => {
+  const getTabsForRole = (role?: Role) => {
     switch (role) {
       case 'ADMIN':
         return [
@@ -51,12 +51,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         return [
           { id: 'inventory', label: 'Bodega & Control de Stock', icon: Package },
         ];
+      default:
+        return [
+          { id: 'pos', label: 'Punto de Venta POS', icon: ShoppingCart },
+        ];
     }
   };
 
-  const visibleTabs = getTabsForRole(user.role);
+  const visibleTabs = getTabsForRole(user?.role) || [];
 
-  const getRoleBadge = (role: Role) => {
+  const getRoleBadge = (role?: Role) => {
     switch (role) {
       case 'ADMIN':
         return 'bg-red-50 text-red-800 border-red-300';
@@ -66,10 +70,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         return 'bg-blue-50 text-blue-800 border-blue-300';
       case 'ASISTENTE_BODEGA':
         return 'bg-amber-50 text-amber-800 border-amber-300';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-300';
     }
   };
 
-  const getRoleTitle = (role: Role) => {
+  const getRoleTitle = (role?: Role) => {
     switch (role) {
       case 'ADMIN':
         return 'Administrador';
@@ -79,6 +85,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         return 'Contador Oficial';
       case 'ASISTENTE_BODEGA':
         return 'Asistente de Bodega';
+      default:
+        return 'Colaborador';
     }
   };
 

@@ -6,6 +6,16 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    strictPort: true,
+    cors: true,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
+  },
+  preview: {
+    port: 5173,
+    host: true,
+    strictPort: true,
+    cors: true,
   },
 });
-

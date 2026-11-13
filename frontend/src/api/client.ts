@@ -23,7 +23,7 @@ const API_BASE_URL = 'http://localhost:3001/api/v1';
 
 // Inicializar almacenamiento local para modo autónomo / fallback (Ecuador USD)
 const initLocalStorage = () => {
-  if (localStorage.getItem('avante_currency_ver') !== 'ECUADOR_USD_V2') {
+  if (localStorage.getItem('avante_currency_ver') !== 'ECUADOR_USD_V3') {
     localStorage.removeItem('avante_products');
     localStorage.removeItem('avante_categories');
     localStorage.removeItem('avante_customers');
@@ -31,7 +31,9 @@ const initLocalStorage = () => {
     localStorage.removeItem('avante_accounts');
     localStorage.removeItem('avante_journal_entries');
     localStorage.removeItem('avante_users');
-    localStorage.setItem('avante_currency_ver', 'ECUADOR_USD_V2');
+    localStorage.removeItem('avante_token');
+    localStorage.removeItem('avante_current_user');
+    localStorage.setItem('avante_currency_ver', 'ECUADOR_USD_V3');
   }
 
   if (!localStorage.getItem('avante_users')) {

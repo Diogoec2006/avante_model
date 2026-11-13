@@ -4,11 +4,38 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/avif" href="/logo_avante.avif" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Avante - Sistema de Gestión Ferretera</title>
+    <script>
+      window.addEventListener('error', function(event) {
+        var errDiv = document.getElementById('avante-boot-error');
+        if (errDiv) {
+          errDiv.style.display = 'block';
+          errDiv.textContent = 'Detalle técnico: ' + (event.message || event.error);
+        }
+      });
+    </script>
   </head>
-  <body class="bg-slate-900 text-slate-100 antialiased selection:bg-orange-500 selection:text-white">
-    <div id="root"></div>
+  <body class="bg-slate-100 text-slate-800 antialiased selection:bg-rose-600 selection:text-white">
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif;">
+        <div style="text-align: center; padding: 2rem; background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); max-width: 400px; width: 90%;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 1.25rem; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <img src="/logo_avante.avif" alt="Avante" style="max-width: 64px; max-height: 64px; object-fit: contain;" />
+          </div>
+          <h2 style="font-size: 1.25rem; font-weight: 900; color: #991b1b; margin: 0 0 0.5rem; letter-spacing: -0.025em;">AVANTE FERRETERÍAS</h2>
+          <p style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 1.5rem;">Cargando Módulos y Portal ERP...</p>
+          <div style="display: flex; justify-content: center; gap: 6px; margin-bottom: 1rem;">
+            <div style="width: 8px; height: 8px; background: #991b1b; border-radius: 50%; animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+            <div style="width: 8px; height: 8px; background: #94a3b8; border-radius: 50%;"></div>
+            <div style="width: 8px; height: 8px; background: #991b1b; border-radius: 50%;"></div>
+          </div>
+          <div id="avante-boot-error" style="display: none; margin-top: 1rem; padding: 0.75rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; color: #b91c1c; font-size: 0.75rem; text-align: left;"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
